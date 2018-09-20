@@ -52,19 +52,6 @@ fn execute() -> i32 {
     opts.optflag("", "version", "print rustfmt version and exit");
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
-    // If there is any invalid argument passed to `cargo fmt`, return without formatting.
-    let mut is_package_arg = false;
-    for arg in env::args().skip(2).take_while(|a| a != "--") {
-        if arg.starts_with('-') {
-            is_package_arg = arg.starts_with("--package");
-        } else if !is_package_arg {
-            print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
-            return FAILURE;
-        } else {
-            is_package_arg = false;
-        }
-    }
-
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
         Err(e) => {
@@ -72,6 +59,12 @@ fn execute() -> i32 {
             return FAILURE;
         }
     };
+
+    let invalid_arguments: Vec<&String> = matches.free.iter().take_while(|a| a.to_string() != "--").collect();
+    if !invalid_arguments.is_empty() {
+        print_usage_to_stderr(&opts, &format!("Invalid arguments: {}", matches.free.join(" ")));
+        return FAILURE;
+    }
 
     let verbosity = match (matches.opt_present("v"), matches.opt_present("q")) {
         (false, false) => Verbosity::Normal,
